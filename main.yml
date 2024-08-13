@@ -1,0 +1,41 @@
+name: 'Nexus scan'
+on: 
+  push:
+    branches: 
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+  
+env:
+  APP_ID: "PSS-GTPT-TEST_AP"
+  
+jobs:
+  Nexus-scanning:
+    runs-on: nojika-nprd-k8s-runner
+    container:
+      image: docker-rt-symphony-platform.pruregistry.intranet.asia:8443/devopsgtpt/flutterflow:3.19.1
+      credentials:
+        username: ${{ secrets.USERNAME_PRUREGISTRY }}
+        password: ${{ secrets.PASSWORD_PRUREGISTRY }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: 'Checkout Repository'
+        uses: actions/checkout@v4
+        with:
+          path: domain
+      - name: Trigger Nexus Scan
+        uses: pru-gisp/oss/actions/nexus-oss-scan@feature/test
+        with:
+          APP_ID: "PSS-GTPT-TEST_AP"
+          STAGE: "build"   #Expected Values: build, stage-release, releas
+          SCAN_DIR: .
+          NEXUS_URL: "https://oss.pru.intranet.asia"
+          NEXUS_RESULT_FILE: "nexus_results.json"  
+          RITS_NEXUSLOGIN: ${{ secrets.RITS_NEXUSLOGIN }}
+          RITS_NEXUSPASSWORD: ${{ secrets.RITS_NEXUSPASSWORD }}
+          USERNAME_PRUREGISTRY: ${{ secrets.USERNAME_PRUREGISTRY }}
+          PASSWORD_PRUREGISTRY: ${{ secrets.PASSWORD_PRUREGISTRY }}

@@ -1,0 +1,74 @@
+name: Scanning with Nexus IQ
+description: Custom GitHub Actions to scan the container image with AquaSec
+
+inputs:
+  APP_ID:
+    description: 'Nexus OSS App Name'
+    required: true
+  STAGE:
+    description: 'Scan stage' #build, stage-release, releas
+    required: true
+  SCAN_DIR:
+    description: 'Directory to Scan '
+    required: true
+  RITS_NEXUSLOGIN:
+    description: 'Nexus OSS User Email'
+    required: true
+  RITS_NEXUSPASSWORD:
+    description: 'Nexus OSS User Password'
+    required: true
+  NEXUS_URL:
+    description: 'Nexus Endpoint'
+    required: true
+  NEXUS_RESULT_FILE:
+    description: 'Nexus Result File Name'
+    required: true
+  USERNAME_PRUREGISTRY:
+    description: 'PruRegistry Server Username'
+    required: true
+  PASSWORD_PRUREGISTRY:
+    description: 'PruRegistry Server User Password'
+    required: true
+
+runs:
+  using: 'composite'
+
+  steps:
+    - name: Download Nexus CLI
+      shell: bash
+      run: |
+        mkdir bin
+        curl -u ${{ inputs.USERNAME_PRUREGISTRY }}:${{ inputs.PASSWORD_PRUREGISTRY }} -O https://artifactory-new.pru.intranet.asia:8443/artifactory/generic-rits-devsecops-oss-local/NexusCli/nexus-iq-cli-standaloneCLI-166 
+        mv nexus-iq-cli-standaloneCLI-166 bin/nexusiq-cli && chmod -R u+x bin  
+
+
+    - run: echo "bin" >> $GITHUB_PATH
+      shell: bash
+
+
+    - name: Nexus CLI Version
+      shell: bash
+      run: |
+        nexusiq-cli -v 
+      
+    - name: Execute AquaSec Scan
+      shell: bash
+      run: |
+        nexusiq-cli                        \
+        -i "${{ inputs.APP_ID }}"           \
+        -s "${{ inputs.NEXUS_URL}}"          \
+        -t "${{ inputs.STAGE }}"            \
+        --ignore-scanning-errors               \
+        -r "${{  inputs.APP_ID }}"_"${{ inputs.NEXUS_RESULT_FILE }}"         \
+        -a "${{ inputs.RITS_NEXUSLOGIN }}":"${{ inputs.RITS_NEXUSPASSWORD }}"      \
+          "${{  inputs.SCAN_DIR }}"  >  nexus_scan_results.json 
+
+    - name: Display scan results
+      shell: bash
+      run: cat nexus_scan_results.json
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: Nexus_Scan_Results-${{ github.run_id}}
+        path: nexus_scan_results.json
+      continue-on-error: true
